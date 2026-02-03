@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 const PROGRESS_KEY = 'thousand-wall-progress';
 
@@ -12,12 +12,18 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // Initialize Redis (uses UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars)
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+
   if (req.method === 'GET') {
     try {
-      const progress = await kv.get(PROGRESS_KEY);
+      const progress = await redis.get(PROGRESS_KEY);
       return res.status(200).json({ progress: progress ?? 10 });
     } catch (error) {
-      console.error('KV GET error:', error);
+      console.error('Redis GET error:', error);
       return res.status(200).json({ progress: 10 }); // fallback
     }
   }
@@ -36,10 +42,10 @@ export default async function handler(req, res) {
     }
 
     try {
-      await kv.set(PROGRESS_KEY, progress);
+      await redis.set(PROGRESS_KEY, progress);
       return res.status(200).json({ success: true, progress });
     } catch (error) {
-      console.error('KV SET error:', error);
+      console.error('Redis SET error:', error);
       return res.status(500).json({ error: 'Failed to save progress' });
     }
   }
